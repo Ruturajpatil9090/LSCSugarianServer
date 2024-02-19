@@ -335,6 +335,146 @@ def get_data():
         print("Error fetching data:", error)
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
-
-
     
+    
+# New route to get the first record from the database
+@app.route("/get_first_tender_data", methods=["GET"])
+def get_first_tender_data():
+    try:
+        # Use SQLAlchemy to get the first record from the TenderHead table
+        first_tender_head = TenderHead.query.order_by(TenderHead.tenderid).first()
+
+        if first_tender_head is None:
+            return jsonify({"error": "No records found in TenderHead table"}), 404
+
+        # Get the tenderid of the first record
+        first_tenderid = first_tender_head.tenderid
+
+        # Query the TenderDetails table for the first record with the corresponding tenderid
+        first_tender_details = TenderDetails.query.filter_by(tenderid=first_tenderid).all()
+
+        # Serialize the data using the schemas
+        first_tender_head_result = tender_schema.dump(first_tender_head)
+        first_tender_details_result = tender_details_schema.dump(first_tender_details)
+
+        response = {
+            "first_tender_head_data": first_tender_head_result,
+            "first_tender_details_data": first_tender_details_result
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    
+    
+# New route to get the last record from the database
+@app.route("/get_last_tender_data_Navigation", methods=["GET"])
+def get_last_tender_data_Navigation():
+    try:
+        # Use SQLAlchemy to get the last record from the TenderHead table
+        last_tender_head = TenderHead.query.order_by(TenderHead.tenderid.desc()).first()
+
+        if last_tender_head is None:
+            return jsonify({"error": "No records found in TenderHead table"}), 404
+
+        # Get the tenderid of the last record
+        last_tenderid = last_tender_head.tenderid
+
+        # Query the TenderDetails table for the last record with the corresponding tenderid
+        last_tender_details = TenderDetails.query.filter_by(tenderid=last_tenderid).all()
+
+        # Serialize the data using the schemas
+        last_tender_head_result = tender_schema.dump(last_tender_head)
+        last_tender_details_result = tender_details_schema.dump(last_tender_details)
+
+        response = {
+            "last_tender_head_data": last_tender_head_result,
+            "last_tender_details_data": last_tender_details_result
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+# New route to get the previous record from the database
+@app.route("/get_previous_tender_data", methods=["GET"])
+def get_previous_tender_data():
+    try:
+        current_tender_no = request.args.get("current_tender_no")
+
+        # Check if the current_tender_no is provided
+        if current_tender_no is None:
+            return jsonify({"error": "Current tender number is required"}), 400
+
+        # Use SQLAlchemy to get the previous record from the TenderHead table
+        previous_tender_head = TenderHead.query.filter(TenderHead.Tender_No < current_tender_no).order_by(
+            TenderHead.Tender_No.desc()).first()
+
+        if previous_tender_head is None:
+            return jsonify({"error": "No previous records found"}), 404
+
+        # Get the tender number of the previous record
+        previous_tender_no = previous_tender_head.Tender_No
+
+        # Query the TenderDetails table for the previous record with the corresponding tender number
+        previous_tender_details = TenderDetails.query.filter_by(Tender_No=previous_tender_no).all()
+
+        # Serialize the data using the schemas
+        previous_tender_head_result = tender_schema.dump(previous_tender_head)
+        previous_tender_details_result = tender_details_schema.dump(previous_tender_details)
+
+        response = {
+            "previous_tender_head_data": previous_tender_head_result,
+            "previous_tender_details_data": previous_tender_details_result
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    
+    
+    
+    
+# New route to get the next record from the database
+@app.route("/get_next_tender_data", methods=["GET"])
+def get_next_tender_data():
+    try:
+        current_tender_no = request.args.get("current_tender_no")
+
+        # Check if the current_tender_no is provided
+        if current_tender_no is None:
+            return jsonify({"error": "Current tender number is required"}), 400
+
+        # Use SQLAlchemy to get the next record from the TenderHead table
+        next_tender_head = TenderHead.query.filter(TenderHead.Tender_No > current_tender_no).order_by(
+            TenderHead.Tender_No.asc()).first()
+
+        if next_tender_head is None:
+            return jsonify({"error": "No next records found"}), 404
+
+        # Get the tender number of the next record
+        next_tender_no = next_tender_head.Tender_No
+
+        # Query the TenderDetails table for the next record with the corresponding tender number
+        next_tender_details = TenderDetails.query.filter_by(Tender_No=next_tender_no).all()
+
+        # Serialize the data using the schemas
+        next_tender_head_result = tender_schema.dump(next_tender_head)
+        next_tender_details_result = tender_details_schema.dump(next_tender_details)
+
+        response = {
+            "next_tender_head_data": next_tender_head_result,
+            "next_tender_details_data": next_tender_details_result
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+
