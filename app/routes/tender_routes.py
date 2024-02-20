@@ -477,4 +477,60 @@ def get_next_tender_data():
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
+# Utility Get Call
+@app.route("/all_tender_data", methods=["GET"])
+def get_all_tender_data():
+    try:
+        sql_query = """
+            SELECT ROW_NUMBER() OVER (ORDER BY Tender_No DESC) AS RowNumber,
+                   Tender_No,
+                   Tender_DateConverted AS Tender_Date,
+                   millshortname,
+                   Quantal,
+                   Grade,
+                   Mill_Rate,
+                   paymenttoname,
+                   tenderdoname,
+                   season,
+                   brokershortname,
+                   Lifting_DateConverted AS Lifting_Date,
+                   tenderid,
+                   Mill_Code
+            FROM qrytenderhead
+            WHERE Company_Code = 4
+            ORDER BY Tender_No DESC
+        """
+
+        # Execute the SQL query
+        result = db.session.execute(text(sql_query))
+
+        # Fetch all rows and convert each row to a dictionary
+        response = []
+        for row in result:
+            response.append({
+                'Tender_No': row.Tender_No,
+                'Tender_Date': row.Tender_Date,
+                'millshortname': row.millshortname,
+                'Quantal': row.Quantal,
+                'Grade': row.Grade,
+                'Mill_Rate': row.Mill_Rate,
+                'paymenttoname': row.paymenttoname,
+                'tenderdoname': row.tenderdoname,
+                'Lifting_Date': row.Lifting_Date,
+                'tenderid': row.tenderid,
+                'Mill_Code': row.Mill_Code,
+            })
+
+        return jsonify(response),200
+        
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+
+
+
+
+
 
