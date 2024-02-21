@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 from sqlalchemy import func
  
-SQLALCHEMY_DATABASE_URI='mssql+pymssql://sa:1234@localhost/Sugarian'
+SQLALCHEMY_DATABASE_URI='mssql+pymssql://sa:1234@localhost/SugarianJK'
 SQLALCHEMY_TRACK_MODIFICATIONS=False
 
 # Define schemas
@@ -18,13 +18,6 @@ tender_schema = TenderHeadSchema()
 tender_details_schema = TenderDetailsSchema()
 tender_details_schema = TenderDetailsSchema(many=True) 
 
-
-# Get All Users from Tender Head table
-@app.route("/users", methods=["GET"])
-def get_users():
-    all_users = TenderHead.query.all()
-    result = tender_schema.dump(all_users)
-    return jsonify(result)
 
 @app.route("/get_last_tender_no", methods=["GET"])
 def get_last_tender_no():
@@ -93,31 +86,31 @@ def get_last_tender_data():
 
 
 
-# Insert TenderHead data in table
-@app.route("/insert_tender_head", methods=["POST"])
-def insert_tender_head():
-    try:
-        data = request.get_json()
-        headData = data['headData']
+# # Insert TenderHead data in table
+# @app.route("/insert_tender_head", methods=["POST"])
+# def insert_tender_head():
+#     try:
+#         data = request.get_json()
+#         headData = data['headData']
 
 
-        # Create TenderHead
-        new_head = TenderHead(**headData)
-        db.session.add(new_head)
-        db.session.commit()
+#         # Create TenderHead
+#         new_head = TenderHead(**headData)
+#         db.session.add(new_head)
+#         db.session.commit()
 
-        # Serialize the inserted object using the schema
-        result = tender_schema.dump(new_head)
+#         # Serialize the inserted object using the schema
+#         result = tender_schema.dump(new_head)
 
-        return jsonify({
-            "message": "TenderHead data inserted successfully",
-            "head": result
-        })
+#         return jsonify({
+#             "message": "TenderHead data inserted successfully",
+#             "head": result
+#         })
 
-    except Exception as e:
-        print(e)
-        db.session.rollback()
-        return jsonify({"error": "Internal server error", "message": str(e)})
+#     except Exception as e:
+#         print(e)
+#         db.session.rollback()
+#         return jsonify({"error": "Internal server error", "message": str(e)})
 
 
      
@@ -222,6 +215,11 @@ def update_sugar_purchase():
                 if item['rowaction'] == "add":
                     item['Tender_No'] = tender_no
                     item['tenderid'] = tenderid
+                    # Generate new ID if not provided
+                    if 'ID' not in item:
+                        max_detail_id = db.session.query(db.func.max(TenderDetails.ID)).scalar() or 0
+                        new_detail_id = max_detail_id + 1
+                        item['ID'] = new_detail_id
                     del item['rowaction'] 
                     new_detail = TenderDetails(**item)
                     db.session.add(new_detail) 
@@ -475,7 +473,7 @@ def get_next_tender_data():
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
-
+    
 
 # Utility Get Call
 @app.route("/all_tender_data", methods=["GET"])
@@ -497,7 +495,7 @@ def get_all_tender_data():
                    tenderid,
                    Mill_Code
             FROM qrytenderhead
-            WHERE Company_Code = 4
+            WHERE Company_Code = 1
             ORDER BY Tender_No DESC
         """
 
@@ -526,9 +524,41 @@ def get_all_tender_data():
 
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    
 
 
+# New route to get all data for a specific tenderid
+@app.route("/get_tender_data_by_id", methods=["GET"])
+def get_tender_data_by_id():
+    try:
+        # Retrieve 'tenderid' from query parameters
+        tenderid = request.args.get('tenderid')
 
+        if tenderid is None:
+            return jsonify({"error": "Missing 'tenderid' parameter"}), 400
+
+        # Query the TenderHead table for the record with the specified tenderid
+        tender_head_data = TenderHead.query.filter_by(tenderid=tenderid).first()
+
+        if tender_head_data is None:
+            return jsonify({"error": "No data found for the specified tenderid"}), 404
+
+        # Query the TenderDetails table for all records with the specified tenderid
+        tender_details_data = TenderDetails.query.filter_by(tenderid=tenderid).all()
+
+        # Serialize the data using the schemas
+        tender_head_result = tender_schema.dump(tender_head_data)
+        tender_details_result = tender_details_schema.dump(tender_details_data)
+
+        response = {
+            "tender_head_data": tender_head_result,
+            "tender_details_data": tender_details_result
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
 
